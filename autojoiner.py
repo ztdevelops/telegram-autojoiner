@@ -34,7 +34,10 @@ async def main():
             invite_hash = match.group(1)
             try:
                 await client(ImportChatInviteRequest(invite_hash))
+                print(f"{username} successfully joined the group, sending notification to channel.")
                 await client.send_message(notification_channel_link, f"{username} joined using {match.group(1)}!")
+                print("Group joined successfully. Terminating the session.")
+                await client.disconnect()
             except Exception as e:
                 print(f"Failed to join {match.group(0)}: {e}")
 
