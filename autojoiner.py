@@ -22,6 +22,7 @@ async def main():
     me = await client.get_me()
     username = me.username if me.username else phone_number
     target_channel = await client.get_entity(channel_link)
+    print(f"Listening to messages in channel: {target_channel.title}")
 
     @client.on(events.NewMessage(chats=target_channel))
     async def handler(event):
