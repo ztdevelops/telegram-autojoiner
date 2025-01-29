@@ -4,7 +4,11 @@ from dotenv import load_dotenv
 import os
 import re
 
-load_dotenv()
+if os.path.exists('.env'):
+    load_dotenv('.env')
+else:
+    load_dotenv('.env.example')
+
 api_id = os.getenv('API_ID')
 api_hash = os.getenv('API_HASH')
 phone_number = os.getenv('PHONE_NUMBER')
