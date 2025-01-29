@@ -13,13 +13,17 @@ api_id = os.getenv('API_ID')
 api_hash = os.getenv('API_HASH')
 phone_number = os.getenv('PHONE_NUMBER')
 channel_link = os.getenv('CHANNEL_LINK')
+notification_channel_link = os.getenv('NOTIFICATION_CHANNEL_LINK')
+
 client = TelegramClient('jsculthereicome', api_id, api_hash)
 
 async def main():
     await client.start(phone_number)
-    channel = await client.get_entity(channel_link)
+    me = await client.get_me()
+    username = me.username if me.username else phone_number
+    target_channel = await client.get_entity(channel_link)
 
-    @client.on(events.NewMessage(chats=channel))
+    @client.on(events.NewMessage(chats=target_channel))
     async def handler(event):
         message = event.message.text
 
@@ -30,7 +34,7 @@ async def main():
             invite_hash = match.group(1)
             try:
                 await client(ImportChatInviteRequest(invite_hash))
-                print(f"Joined {match.group(0)}")
+                await client.send_message(notification_channel_link, f"{username} joined using {match.group(1)}!")
             except Exception as e:
                 print(f"Failed to join {match.group(0)}: {e}")
 
