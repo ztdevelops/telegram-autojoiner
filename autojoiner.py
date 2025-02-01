@@ -15,7 +15,7 @@ phone_number = os.getenv('PHONE_NUMBER')
 channel_link = os.getenv('CHANNEL_LINK')
 notification_channel_link = os.getenv('NOTIFICATION_CHANNEL_LINK')
 
-client = TelegramClient('jsculthereicome', api_id, api_hash)
+client = TelegramClient(f"{phone_number.replace("+", "")}", api_id, api_hash)
 
 async def main():
     await client.start(phone_number)
