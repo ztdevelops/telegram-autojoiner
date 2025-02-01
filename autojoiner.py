@@ -1,10 +1,13 @@
 import asyncio
+import logging
 from telethon import TelegramClient, events
 from telethon.tl.functions.messages import ImportChatInviteRequest
 from telethon.errors import FloodWaitError
 from dotenv import load_dotenv
 import os
 import re
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 if os.path.exists('.env'):
     load_dotenv('.env')
@@ -21,7 +24,7 @@ channel_link = os.getenv('CHANNEL_LINK')
 notification_channel_link = os.getenv('NOTIFICATION_CHANNEL_LINK')
 notification_channel_admin_user = os.getenv('NOTIFICATION_CHANNEL_ADMIN_USER')
 
-client = TelegramClient(f"{phone_number.replace("+", "")}", api_id, api_hash)
+client = TelegramClient(f"{phone_number.replace('+', '')}", api_id, api_hash)
 notifier_client = TelegramClient('notification', api_id, api_hash)
 
 def get_invite_hash(event):
@@ -34,9 +37,10 @@ def get_invite_hash(event):
 async def join_group(client, invite_hash):
     try:
         await client(ImportChatInviteRequest(invite_hash))
+        logging.info(f"Successfully joined group with invite link {invite_hash}.")
         return True
     except Exception as e:
-        print(f"Failed to join group with invite link {invite_hash}: {e}")
+        logging.error(f"Failed to join group with invite link {invite_hash}: {e}")
         return False
 
 async def notify_channel(notifier_client, notification_channel, username, invite_hash):
@@ -44,7 +48,7 @@ async def notify_channel(notifier_client, notification_channel, username, invite
         await notifier_client.send_message(notification_channel, f"{username} joined using {invite_hash}!")
         return True
     except Exception as e:
-        print(f"Failed to send notification: {e}")
+        logging.error(f"Failed to send notification: {e}")
         return False
 
 async def start_client():
@@ -57,9 +61,11 @@ async def start_client():
             listening_channel = await client.get_entity(channel_link)
             notifying_channel = await notifier_client.get_entity(notification_channel_link)
 
+            logging.info(f"Started listening for messages in {listening_channel.title}...")
+
             @client.on(events.NewMessage(chats=listening_channel))
             async def handle(event):
-                global listening
+                nonlocal listening
                 invite_hash = get_invite_hash(event)
                 if invite_hash is None:
                     # no invite link found in message, continue listening
@@ -72,20 +78,28 @@ async def start_client():
                 
                 # stop listening after successfully joining group, regardless of whether notification was sent
                 listening = False
+
+                logging.info(f"Stopping soon. Notifying channel about successful join...")
                 
                 me = await client.get_me()
                 username = me.username if me.username else phone_number
                 await notify_channel(notifier_client, notifying_channel, username, invite_hash)
-                await client.disconnect()
+                try:
+                    await client.disconnect()
+                except Exception as e:
+                    logging.error(f"Error occurred while disconnecting: {e}")
             await client.run_until_disconnected()
         except FloodWaitError as e:
-            print(f"Flood wait error occurred. Waiting for {e.seconds} seconds...")
+            logging.error(f"Flood wait error occurred. Waiting for {e.seconds} seconds...")
             await asyncio.sleep(e.seconds)
         except Exception as e:
-            print(f"Error occurred while connecting: {e}. Reconnecting in 5 seconds...")
+            logging.error(f"Error occurred while connecting: {e}. Reconnecting in 5 seconds...")
             await asyncio.sleep(5)
 
 async def main():
     await start_client()
 
-client.loop.run_until_complete(main())
+if __name__ == "__main__":
+    logging.info("Autojoiner started.")
+    client.loop.run_until_complete(main())
+    logging.info("Autojoiner stopped.")
